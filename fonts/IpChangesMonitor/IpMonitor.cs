@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Reflection;
+using System.Security.Principal;
 using System.Threading;
 
 namespace IpChangesMonitor
@@ -46,12 +47,19 @@ namespace IpChangesMonitor
 
         private static void SendNewAdressesToUser(ICollection<IPAddress> iPs)
         {
+            EventLog eventLog = new EventLog() { Source = "IpMonitorSource", Log = "IpMonitorLog" };
+            
             try
             {
-                var sendFrom = ConfigurationManager.AppSettings["SendFrom"];
-                var sendTo = ConfigurationManager.AppSettings["SendTo"];
+                var domain = ConfigurationManager.AppSettings["domain"];
+                var userName = ConfigurationManager.AppSettings["user_name"];
 
-                MailMessage mail = new MailMessage(sendFrom, sendTo)
+                var address = string.Format("{0}@{1}", userName, domain);
+
+                eventLog.WriteEntry("Domain: " + domain);
+                eventLog.WriteEntry("Address: " + address);
+
+                MailMessage mail = new MailMessage(address, address)
                 {
                     Subject = "Your IP addresses have changed",
                     IsBodyHtml = true
@@ -80,10 +88,9 @@ namespace IpChangesMonitor
                 var client = new SmtpClient();
                 client.Send(mail);
             }
-            catch
+            catch (Exception e)
             {
-                EventLog eventLog = new EventLog() { Source = "IpMonitorSource", Log = "IpMonitorLog" };
-                eventLog.WriteEntry("Email não enviado");
+                eventLog.WriteEntry("Erro: " + e.Message);
             }
         }
     }
