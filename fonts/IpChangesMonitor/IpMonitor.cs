@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Reflection;
+using System.Security.Principal;
 using System.Threading;
 
 namespace IpChangesMonitor
@@ -48,10 +49,16 @@ namespace IpChangesMonitor
         {
             try
             {
-                var sendFrom = ConfigurationManager.AppSettings["SendFrom"];
-                var sendTo = ConfigurationManager.AppSettings["SendTo"];
+                var host_sufix = ConfigurationManager.AppSettings["host_sufix"];
+                var domain = ConfigurationManager.AppSettings["domain"];
+                var user = ConfigurationManager.AppSettings["user"];
+                var password = ConfigurationManager.AppSettings["password"];
 
-                MailMessage mail = new MailMessage(sendFrom, sendTo)
+                var identity = WindowsIdentity.GetCurrent();
+
+                var mailAddress = identity.Name + "@" + domain;
+
+                MailMessage mail = new MailMessage(mailAddress, mailAddress)
                 {
                     Subject = "Your IP addresses have changed",
                     IsBodyHtml = true
@@ -77,7 +84,13 @@ namespace IpChangesMonitor
                 templateContent = templateContent.Replace("{Description}", contentHtml).Replace("{Year}", DateTime.Now.Year.ToString());
                 mail.Body = templateContent;
 
-                var client = new SmtpClient();
+                var client = new SmtpClient(host_sufix + "." + domain)
+                {
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(user, password, domain),
+                };
+
                 client.Send(mail);
             }
             catch
